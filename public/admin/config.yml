@@ -1,0 +1,42 @@
+backend:
+  name: github
+  repo: sumuzhi/sumuzhi.github.io
+  branch: main
+  base_url: https://api.github.com
+  auth_endpoint: https://github.com/login/oauth/authorize
+
+media_folder: public/images
+public_folder: /images
+
+local_backend: false
+
+collections:
+  - name: blog
+    label: Blog Posts
+    label_singular: Blog Post
+    folder: content/blog
+    create: true
+    slug: "{{slug}}"
+    preview_path: blog/{{slug}}
+    editor:
+      preview: false
+    fields:
+      - { name: title, label: Title, widget: string }
+      - { name: date, label: Publish Date, widget: datetime, format: YYYY-MM-DD, date_format: YYYY-MM-DD, time_format: false }
+      - { name: tags, label: Tags, widget: list, default: ["misc"] }
+      - { name: excerpt, label: Excerpt, widget: text }
+      - { name: body, label: Body, widget: markdown }
+
+  - name: projects
+    label: Projects
+    file: data/projects.json
+    fields:
+      - name: items
+        label: Projects
+        widget: list
+        fields:
+          - { name: name, label: Name, widget: string }
+          - { name: description, label: Description, widget: text }
+          - { name: url, label: GitHub URL, widget: string }
+          - { name: tags, label: Tags, widget: list }
+          - { name: stars, label: Stars, widget: number, required: false }
