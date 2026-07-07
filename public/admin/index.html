@@ -1,11 +1,323 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Content Manager — sumuzhi</title>
-  <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0a; --bg2: #111; --text: #e5e5e5; --text2: #a3a3a3;
+      --border: #262626; --accent: #3b82f6; --danger: #ef4444; --success: #22c55e;
+    }
+    body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    .container { max-width: 800px; margin: 0 auto; padding: 24px 16px; }
+
+    /* Login */
+    .login-card { max-width: 400px; margin: 80px auto; padding: 32px; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; }
+    .login-card h1 { font-size: 20px; margin-bottom: 8px; }
+    .login-card p { font-size: 13px; color: var(--text2); margin-bottom: 20px; line-height: 1.6; }
+    .login-card a { color: var(--accent); }
+    .login-card input { width: 100%; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; font-family: monospace; margin-bottom: 12px; }
+    .login-card button { width: 100%; padding: 10px; background: var(--accent); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; }
+    .login-card button:hover { opacity: 0.9; }
+
+    /* Header */
+    .header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+    .header h1 { font-size: 18px; }
+    .header .actions { display: flex; gap: 8px; }
+    .header button { padding: 6px 14px; background: var(--bg2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; font-size: 13px; cursor: pointer; }
+    .header button.primary { background: var(--accent); color: white; border-color: var(--accent); }
+
+    /* Post list */
+    .post-list { display: flex; flex-direction: column; gap: 2px; }
+    .post-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: border-color 0.15s; }
+    .post-item:hover { border-color: var(--accent); }
+    .post-item .info { flex: 1; min-width: 0; }
+    .post-item .title { font-size: 14px; font-weight: 500; }
+    .post-item .meta { font-size: 12px; color: var(--text2); margin-top: 2px; }
+    .post-item .del { padding: 4px 8px; background: none; border: 1px solid var(--border); color: var(--text2); border-radius: 4px; font-size: 12px; cursor: pointer; margin-left: 8px; }
+    .post-item .del:hover { background: var(--danger); color: white; border-color: var(--danger); }
+
+    /* Editor */
+    .editor { display: none; }
+    .editor.active { display: block; }
+    .editor label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 4px; margin-top: 16px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .editor input, .editor textarea { width: 100%; padding: 10px 12px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; font-family: inherit; resize: vertical; }
+    .editor textarea { min-height: 400px; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 13px; line-height: 1.6; }
+    .editor input[name="tags"] { font-family: monospace; font-size: 13px; }
+    .editor .btns { display: flex; gap: 8px; margin-top: 16px; }
+    .editor .btns button { padding: 8px 20px; border-radius: 6px; font-size: 14px; cursor: pointer; }
+    .editor .btns .save { background: var(--accent); color: white; border: none; }
+    .editor .btns .cancel { background: var(--bg2); color: var(--text2); border: 1px solid var(--border); }
+
+    .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: 8px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100; }
+    .toast.show { opacity: 1; }
+    .toast.ok { background: var(--success); color: white; }
+    .toast.err { background: var(--danger); color: white; }
+
+    .empty { text-align: center; padding: 60px 0; color: var(--text2); font-size: 14px; }
+  </style>
 </head>
 <body>
+  <div id="login" class="login-card">
+    <h1>&#x1F4DD; Blog Manager</h1>
+    <p>
+      Enter a GitHub <a href="https://github.com/settings/tokens/new?scopes=repo&description=Blog%20CMS" target="_blank">Personal Access Token</a>
+      with <strong>repo</strong> scope to manage blog posts.
+    </p>
+    <input id="pat-input" type="password" placeholder="ghp_xxxxxxxxxxxx">
+    <button onclick="login()">Sign in</button>
+  </div>
+
+  <div id="app" style="display:none">
+    <div class="container">
+      <div class="header">
+        <h1>&#x1F4DD; Blog Manager</h1>
+        <div class="actions">
+          <button class="primary" onclick="newPost()">+ New Post</button>
+          <button onclick="logout()">Logout</button>
+        </div>
+      </div>
+
+      <div id="list" class="post-list"></div>
+
+      <div id="editor" class="editor">
+        <label>Title</label>
+        <input name="title" placeholder="Post title">
+        <label>Date</label>
+        <input name="date" type="date">
+        <label>Tags (comma separated)</label>
+        <input name="tags" placeholder="React, JavaScript, Tutorial">
+        <label>Excerpt</label>
+        <input name="excerpt" placeholder="Brief description">
+        <label>Content (Markdown)</label>
+        <textarea name="body" placeholder="Write your post in Markdown..."></textarea>
+        <div class="btns">
+          <button class="save" onclick="savePost()">Save & Publish</button>
+          <button class="cancel" onclick="closeEditor()">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const REPO = 'sumuzhi/sumuzhi.github.io'
+    const PATH  = 'content/blog'
+    const BRANCH = 'main'
+
+    let token = ''
+    let posts = []
+    let editingSlug = null
+
+    // --- Auth ---
+    function login() {
+      const val = document.getElementById('pat-input').value.trim()
+      if (!val || !val.startsWith('ghp_')) return toast('Please enter a valid GitHub token (starts with ghp_)', 'err')
+      token = val
+      localStorage.setItem('blog_cms_token', token)
+      document.getElementById('login').style.display = 'none'
+      document.getElementById('app').style.display = 'block'
+      loadPosts()
+    }
+
+    function logout() {
+      token = ''
+      editingSlug = null
+      localStorage.removeItem('blog_cms_token')
+      document.getElementById('login').style.display = 'block'
+      document.getElementById('app').style.display = 'none'
+      closeEditor()
+    }
+
+    // --- API ---
+    async function gh(path, opts = {}) {
+      const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${path}`, {
+        headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json' },
+        ...opts
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.message || `GitHub API: ${res.status}`)
+      }
+      return res.json()
+    }
+
+    // --- Posts ---
+    async function loadPosts() {
+      try {
+        const files = await gh(PATH + '?ref=' + BRANCH)
+        posts = files.filter(f => f.name.endsWith('.md')).map(f => ({
+          name: f.name,
+          slug: f.name.replace(/\.md$/, ''),
+          sha:  f.sha,
+        }))
+        renderList()
+      } catch (e) {
+        toast('Failed to load posts: ' + e.message, 'err')
+        posts = []
+        renderList()
+      }
+    }
+
+    function renderList() {
+      const el = document.getElementById('list')
+      if (posts.length === 0) {
+        el.innerHTML = '<div class="empty">No posts yet. Click "+ New Post" to create one.</div>'
+        return
+      }
+      el.innerHTML = posts.map(p => `
+        <div class="post-item" onclick="editPost('${p.slug}')">
+          <div class="info">
+            <div class="title">${esc(p.slug.replace(/-/g, ' '))}</div>
+            <div class="meta">${esc(p.name)}</div>
+          </div>
+          <button class="del" onclick="event.stopPropagation();deletePost('${p.slug}','${p.sha}')">Delete</button>
+        </div>
+      `).join('')
+    }
+
+    async function editPost(slug) {
+      try {
+        const file = await gh(PATH + '/' + slug + '.md?ref=' + BRANCH)
+        const content = atob(file.content)
+        const fm = parseFM(content)
+
+        document.getElementById('list').style.display = 'none'
+        document.getElementById('editor').classList.add('active')
+        editingSlug = slug
+        document.querySelector('#editor [name="title"]').value   = fm.title || ''
+        document.querySelector('#editor [name="date"]').value     = fm.date || new Date().toISOString().split('T')[0]
+        document.querySelector('#editor [name="tags"]').value     = (fm.tags || []).join(', ')
+        document.querySelector('#editor [name="excerpt"]').value  = fm.excerpt || ''
+        document.querySelector('#editor [name="body"]').value     = fm.body || ''
+
+        // Store SHA for update
+        document.getElementById('editor').dataset.sha = file.sha
+      } catch (e) {
+        toast('Failed to load post: ' + e.message, 'err')
+      }
+    }
+
+    function newPost() {
+      document.getElementById('list').style.display = 'none'
+      document.getElementById('editor').classList.add('active')
+      editingSlug = null
+      document.querySelector('#editor [name="title"]').value   = ''
+      document.querySelector('#editor [name="date"]').value     = new Date().toISOString().split('T')[0]
+      document.querySelector('#editor [name="tags"]').value     = ''
+      document.querySelector('#editor [name="excerpt"]').value  = ''
+      document.querySelector('#editor [name="body"]').value     = ''
+      document.getElementById('editor').dataset.sha = ''
+    }
+
+    function closeEditor() {
+      document.getElementById('list').style.display = 'block'
+      document.getElementById('editor').classList.remove('active')
+      editingSlug = null
+    }
+
+    async function savePost() {
+      const title   = document.querySelector('#editor [name="title"]').value.trim()
+      const date    = document.querySelector('#editor [name="date"]').value.trim()
+      const tags    = document.querySelector('#editor [name="tags"]').value.trim()
+      const excerpt = document.querySelector('#editor [name="excerpt"]').value.trim()
+      const body    = document.querySelector('#editor [name="body"]').value
+      const sha     = document.getElementById('editor').dataset.sha
+
+      if (!title) return toast('Title is required', 'err')
+
+      const tagList = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : ['misc']
+      const fm = [
+        '---',
+        `title: "${title.replace(/"/g, '\\"')}"`,
+        `date: ${date || new Date().toISOString().split('T')[0]}`,
+        `tags: [${tagList.map(t => `"${t}"`).join(', ')}]`,
+        `excerpt: "${excerpt.replace(/"/g, '\\"')}"`,
+        '---',
+        '',
+        body.trim(),
+      ].join('\n')
+
+      const slug = editingSlug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+      const filepath = PATH + '/' + slug + '.md'
+      const base64 = btoa(unescape(encodeURIComponent(fm)))
+
+      try {
+        const payload = {
+          message: editingSlug ? `Update: ${title}` : `New post: ${title}`,
+          content: base64,
+          branch: BRANCH,
+        }
+        if (sha) payload.sha = sha
+
+        await gh(filepath, { method: 'PUT', body: JSON.stringify(payload) })
+        toast(editingSlug ? 'Post updated!' : 'Post published!', 'ok')
+        closeEditor()
+        await loadPosts()
+      } catch (e) {
+        toast('Save failed: ' + e.message, 'err')
+      }
+    }
+
+    async function deletePost(slug, sha) {
+      if (!confirm(`Delete "${slug}"? This cannot be undone.`)) return
+      try {
+        await gh(PATH + '/' + slug + '.md', {
+          method: 'DELETE',
+          body: JSON.stringify({ message: `Delete: ${slug}`, sha, branch: BRANCH })
+        })
+        toast('Deleted', 'ok')
+        await loadPosts()
+      } catch (e) {
+        toast('Delete failed: ' + e.message, 'err')
+      }
+    }
+
+    // --- Helpers ---
+    function parseFM(raw) {
+      const m = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/)
+      if (!m) return { body: raw }
+      const front = {}
+      m[1].split('\n').forEach(line => {
+        const kv = line.match(/^(\w+):\s*(.+)$/)
+        if (!kv) return
+        let val = kv[2].trim()
+        if (val.startsWith('[') && val.endsWith(']')) {
+          val = val.slice(1, -1).split(',').map(s => s.trim().replace(/^"|"$/g, ''))
+        }
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.slice(1, -1)
+        }
+        front[kv[1]] = val
+      })
+      return { ...front, body: m[2].trim() }
+    }
+
+    function esc(s) {
+      const d = document.createElement('div')
+      d.textContent = s
+      return d.innerHTML
+    }
+
+    function toast(msg, type = 'ok') {
+      const el = document.getElementById('toast')
+      el.textContent = msg
+      el.className = 'toast ' + type + ' show'
+      clearTimeout(el._t)
+      el._t = setTimeout(() => el.classList.remove('show'), 3000)
+    }
+
+    // --- Init ---
+    const saved = localStorage.getItem('blog_cms_token')
+    if (saved) {
+      token = saved
+      document.getElementById('login').style.display = 'none'
+      document.getElementById('app').style.display = 'block'
+      loadPosts()
+    }
+  </script>
 </body>
 </html>
