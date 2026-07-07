@@ -1,0 +1,40 @@
+[
+  {
+    "name": "react_project",
+    "description": "商品后台管理系统 — product backend management system built with React.",
+    "url": "https://github.com/sumuzhi/react_project",
+    "tags": ["React", "JavaScript"],
+    "stars": 1
+  },
+  {
+    "name": "lexiplay",
+    "description": "Multi-sensory learning platform: game lobby + sub-games + admin backend, with voice-driven and gesture-driven games.",
+    "url": "https://github.com/sumuzhi/lexiplay",
+    "tags": ["JavaScript", "Education"],
+    "stars": 1
+  },
+  {
+    "name": "sumuzhi-html",
+    "description": "HTML/CSS projects and experiments.",
+    "url": "https://github.com/sumuzhi/sumuzhi-html",
+    "tags": ["HTML", "CSS", "JavaScript"]
+  },
+  {
+    "name": "js_instances",
+    "description": "JavaScript实例 — a collection of JavaScript examples and patterns.",
+    "url": "https://github.com/sumuzhi/js_instances",
+    "tags": ["JavaScript"]
+  },
+  {
+    "name": "bilitwin",
+    "description": "Bilibili content toolkit: FLV/MP4 download & merge, ASS subtitle conversion, AAC extraction, MKV packaging.",
+    "url": "https://github.com/sumuzhi/bilitwin",
+    "tags": ["JavaScript", "Video", "Bilibili"]
+  },
+  {
+    "name": "wxappUnpacker",
+    "description": "WeChat Mini Program unpacker — extract and analyze WeChat mini apps.",
+    "url": "https://github.com/sumuzhi/wxappUnpacker",
+    "tags": ["JavaScript", "WeChat"]
+  }
+]
